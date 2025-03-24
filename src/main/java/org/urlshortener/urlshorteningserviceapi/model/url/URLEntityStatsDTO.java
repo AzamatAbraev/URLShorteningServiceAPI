@@ -1,10 +1,18 @@
 package org.urlshortener.urlshorteningserviceapi.model.url;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class URLEntityStatsDTO {
     private Integer id;
 
@@ -17,7 +25,7 @@ public class URLEntityStatsDTO {
 
     private int accessCount;
 
-    private LocalDateTime expirationTime;
+    private LocalDateTime expiresAt;
 
     private LocalDateTime createdAt;
 

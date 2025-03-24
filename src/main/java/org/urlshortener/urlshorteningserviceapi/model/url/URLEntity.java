@@ -26,7 +26,7 @@ public class URLEntity {
 
     private int accessCount;
 
-    private LocalDateTime expirationTime;
+    private LocalDateTime expiresAt;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

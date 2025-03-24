@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.validator.constraints.URL;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +17,6 @@ public class URLEntityRequest {
     @NotBlank(message = "URL cannot be blank")
     @URL(message = "Invalid URL format")
     private String originalUrl;
+
+    private LocalDateTime expiresAt;
 }

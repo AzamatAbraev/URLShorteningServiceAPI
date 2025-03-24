@@ -2,6 +2,8 @@ package org.urlshortener.urlshorteningserviceapi.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,11 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import org.urlshortener.urlshorteningserviceapi.model.api.ApiResponse;
 import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityDTO;
 import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityRequest;
+import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityStatsDTO;
 import org.urlshortener.urlshorteningserviceapi.service.URLShorteningService;
 import org.urlshortener.urlshorteningserviceapi.util.ApiResponseBuilder;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/shorten")
 @CrossOrigin
@@ -36,6 +40,18 @@ public class URLShorteningController {
                     .build();
     }
 
+    @GetMapping("/{shortUrl}/stats")
+    public ResponseEntity<ApiResponse<URLEntityStatsDTO>> getURLStats(@PathVariable String shortUrl, HttpServletRequest request) {
+        URLEntityStatsDTO entity = urlShorteningService.getURLStats(shortUrl);
+
+        return new ApiResponseBuilder<URLEntityStatsDTO>()
+                .message("Success")
+                .status(HttpStatus.OK)
+                .data(entity)
+                .path(request.getRequestURI())
+                .build();
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<URLEntityDTO>> createShortUrl(@Valid @RequestBody URLEntityRequest request, HttpServletRequest servletRequest) {
         URLEntityDTO urlEntity = urlShorteningService.createShortURL(request);
@@ -48,14 +64,16 @@ public class URLShorteningController {
                 .build();
     }
 
-    @Cacheable(value = "urls", key = "#shortUrl")
+    @CachePut(value = "urls", key = "#shortUrl")
     @GetMapping("/{shortUrl}")
     public ResponseEntity<ApiResponse<URLEntityDTO>> getOriginalUrl(@PathVariable String shortUrl, HttpServletRequest servletRequest) {
         URLEntityDTO originalURLEntity = urlShorteningService.getOriginalURL(shortUrl);
 
+        log.info(servletRequest.getPathInfo());
+
         return new ApiResponseBuilder<URLEntityDTO>()
                             .message("Success")
-                            .status(HttpStatus.FOUND)
+                            .status(HttpStatus.OK)
                             .data(originalURLEntity)
                             .path(servletRequest.getRequestURI())
                             .build();

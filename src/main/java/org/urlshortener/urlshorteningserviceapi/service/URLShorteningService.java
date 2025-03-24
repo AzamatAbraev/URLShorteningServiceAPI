@@ -2,16 +2,20 @@ package org.urlshortener.urlshorteningserviceapi.service;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.urlshortener.urlshorteningserviceapi.model.url.URLEntity;
 import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityDTO;
 import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityRequest;
+import org.urlshortener.urlshorteningserviceapi.model.url.URLEntityStatsDTO;
 import org.urlshortener.urlshorteningserviceapi.repository.URLRepository;
 import org.urlshortener.urlshorteningserviceapi.util.ShortURLGenerator;
 import org.urlshortener.urlshorteningserviceapi.util.URLEntityMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class URLShorteningService {
@@ -24,6 +28,12 @@ public class URLShorteningService {
         this.mapper = mapper;
     }
 
+    @Scheduled(fixedRate = 3600000)
+    public void deleteExpiredURLs() {
+        List<URLEntity> expiredUrls = urlRepository.findByExpiresAtBefore(LocalDateTime.now());
+        urlRepository.deleteAll(expiredUrls);
+    }
+
     public List<URLEntityDTO> getAllURLs() {
         return urlRepository.findAll().stream().map(mapper::toDTO).toList();
     }
@@ -31,6 +41,7 @@ public class URLShorteningService {
     public URLEntityDTO createShortURL(@Valid URLEntityRequest urlEntityRequest) {
         URLEntity urlEntity = new URLEntity();
         urlEntity.setOriginalUrl(urlEntityRequest.getOriginalUrl());
+        urlEntity.setExpiresAt(urlEntityRequest.getExpiresAt());
 
         urlEntity = urlRepository.save(urlEntity);
         urlEntity.setShortUrl(ShortURLGenerator.encode(urlEntity.getId() + 1000));
@@ -44,7 +55,15 @@ public class URLShorteningService {
 
         URLEntity entity = urlRepository.findById(id).orElseThrow(() -> new RuntimeException("URL is not found"));
 
-        return mapper.toDTO(entity);
+        if (entity.getExpiresAt() != null && LocalDateTime.now().isAfter(entity.getExpiresAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "This short URL has expired.");
+        }
+
+        int accessCount = entity.getAccessCount();
+        entity.setAccessCount(accessCount + 1);
+        URLEntity savedEntity = urlRepository.save(entity);
+
+        return mapper.toDTO(savedEntity);
     }
 
     public URLEntityDTO updateOriginalURL(String shortUrl, @Valid URLEntityRequest urlEntityRequest) {
@@ -66,4 +85,18 @@ public class URLShorteningService {
 
         urlRepository.deleteById(id);
     }
+
+    public URLEntityStatsDTO getURLStats(String shortUrl) {
+        Integer id = ShortURLGenerator.decode(shortUrl) - 1000;
+
+        URLEntity entity = urlRepository.findById(id).orElseThrow(() -> new RuntimeException("URL is not found"));
+
+        if (entity.getExpiresAt() != null && LocalDateTime.now().isAfter(entity.getExpiresAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "This short URL has expired.");
+        }
+
+        return mapper.toStatsDTO(entity);
+    }
+
+
 }
