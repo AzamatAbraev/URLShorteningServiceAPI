@@ -10,6 +10,7 @@ import org.urlshortener.urlshorteningserviceapi.repository.URLRepository;
 import org.urlshortener.urlshorteningserviceapi.util.ShortURLGenerator;
 import org.urlshortener.urlshorteningserviceapi.util.URLEntityMapper;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -21,6 +22,10 @@ public class URLShorteningService {
     public URLShorteningService(URLRepository urlRepository, URLEntityMapper mapper) {
         this.urlRepository = urlRepository;
         this.mapper = mapper;
+    }
+
+    public List<URLEntityDTO> getAllURLs() {
+        return urlRepository.findAll().stream().map(mapper::toDTO).toList();
     }
 
     public URLEntityDTO createShortURL(@Valid URLEntityRequest urlEntityRequest) {
@@ -37,8 +42,28 @@ public class URLShorteningService {
     public URLEntityDTO getOriginalURL(String shortUrl) {
         Integer id = ShortURLGenerator.decode(shortUrl) - 1000;
 
-        URLEntity entity = urlRepository.findById(id).orElseThrow(() -> new RuntimeException("Url is not found"));
+        URLEntity entity = urlRepository.findById(id).orElseThrow(() -> new RuntimeException("URL is not found"));
 
         return mapper.toDTO(entity);
+    }
+
+    public URLEntityDTO updateOriginalURL(String shortUrl, @Valid URLEntityRequest urlEntityRequest) {
+        Integer id = ShortURLGenerator.decode(shortUrl) - 1000;
+        URLEntity entity = urlRepository.findById(id).orElseThrow(() -> new RuntimeException("Url is not found"));
+        entity.setOriginalUrl(urlEntityRequest.getOriginalUrl());
+
+        URLEntity savedEntity = urlRepository.save(entity);
+
+        return mapper.toDTO(savedEntity);
+    }
+
+    public void deleteURL(String shortUrl) {
+        Integer id = ShortURLGenerator.decode(shortUrl) - 1000;
+
+        if (!urlRepository.existsById(id)) {
+            throw new RuntimeException("URL is not found");
+        }
+
+        urlRepository.deleteById(id);
     }
 }
